@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DigiSay Project</title>
+    <!-- include jquery-->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <form id="category-form">
+        <!-- high level (category a , b as in example) -->
+        <div id="categories-container">
+            {% for category in categories %}
+                <!-- Checkbox for each top-level category -->
+                <input type="checkbox" name="category" value="{{ category.id }}" class="category-checkbox">
+                {{ category.name }}<br>
+            {% endfor %}
+        </div>
+        <div id="subcategories-container"></div>
+    </form>
+
+    <script>
+        $(document).ready(function() {
+            // Function to load subcategories of a given parent
+            function loadSubcategories(parentId, containerId, level) {
+                $.ajax({
+                    url: '{% url "get_subcategories" %}',
+                    data: {
+                        'parent_id': parentId
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        let container = $(containerId);
+                        container.empty();  // Clear the container before loading new data
+                        $.each(data, function(index, item) {
+                            container.append(
+                                '<div class="subcategory-container" id="subcategory-container-' + item.id + '">' +
+                                '<input type="checkbox" name="subcategory" value="' + item.id + '" class="subcategory-checkbox" data-level="' + level + '">' +
+                                item.name + '<br>' +
+                                '<div class="sub-subcategories-container" id="sub-subcategories-' + item.id + '"></div>' +
+                                '</div>'
+                            );
+                        });
+                    }
+                });
+            }
+            // Function to handle top-level category selection
+            function handleCategorySelection() {
+                $('#subcategories-container').empty();  // Clear subcategories container
+                $('.category-checkbox:checked').each(function() {
+                    let categoryId = $(this).val();
+                    loadSubcategories(categoryId, '#subcategories-container', 1);
+                });
+            }
+            
+            // Event listener for top-level category checkboxes
+            $('.category-checkbox').change(handleCategorySelection);
+            
+            // Event listener for subcategory checkboxes (using event delegation)
+
+            $(document).on('change', '.subcategory-checkbox', function() {
+                let selectedSubcategories = [];
+                $('.subcategory-checkbox:checked').each(function() {
+                    selectedSubcategories.push($(this).val());
+                });
+
+                $('.subcategory-container').each(function() {
+                    let containerId = $(this).find('.sub-subcategories-container').attr('id');
+                    let parentId = containerId.split('-').pop();
+                    if (selectedSubcategories.includes(parentId)) {
+                        if (!$(this).find('.sub-subcategories-container').children().length) {
+                            loadSubcategories(parentId, '#' + containerId, 2);
+                        }
+                    } else {
+                        $(this).find('.sub-subcategories-container').empty();  // Clear out any containers that shouldn't be shown
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
